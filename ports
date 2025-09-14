@@ -1,0 +1,12 @@
+
+
+microservices use unique ports
+
+
+| Service         | Port |
+| --------------- | ---- |
+| Eureka Server   | 8761 |
+| Config Server   | 8888 |
+| API Gateway     | 8080 |
+| User Service    | 8081 |
+| Payment Service | 8082 |

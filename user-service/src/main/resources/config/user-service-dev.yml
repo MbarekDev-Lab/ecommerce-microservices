@@ -1,0 +1,9 @@
+spring:
+  profiles: dev
+
+server:
+  port: 8082   # Different port for dev profile
+
+logging:
+  level:
+    root: DEBUG
