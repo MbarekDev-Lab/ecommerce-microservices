@@ -1,0 +1,9 @@
+ development in this order:
+
+1. Discovery Server (Eureka) - Service registry first
+2. Config Server - Centralized configuration
+3. User Service - Core user management
+4. Product Service - Product catalog
+5. Order Service - Order processing
+6. Payment Service - Payment handling
+7. API Gateway - Entry point and routing
