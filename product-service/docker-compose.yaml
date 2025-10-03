@@ -1,0 +1,38 @@
+services:
+  redis:
+    image: redis:8.2.1
+    container_name: redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
+  eureka-server:
+    image: openjdk:21
+    container_name: eureka-server
+    working_dir: /app
+    volumes:
+      - ./discovery-server/target:/app
+    command: ["java", "-jar", "discovery-server-0.0.1-SNAPSHOT.jar"]
+    ports:
+      - "8761:8761"
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+  product-service:
+    image: openjdk:21
+    container_name: product-service
+    working_dir: /app
+    volumes:
+      - ./product-service/target:/app
+    command: ["java", "-jar", "product-service-0.0.1-SNAPSHOT.jar"]
+    ports:
+      - "8082:8082"
+    environment:
+      - SPRING_REDIS_HOST=redis
+      - SPRING_REDIS_PORT=6379
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka
+    depends_on:
+      - redis
+      - eureka-server
+    restart: unless-stopped

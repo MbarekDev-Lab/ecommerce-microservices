@@ -1,0 +1,144 @@
+services:
+  redis:
+    image: redis:8.2.1
+    container_name: redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  eureka-server:
+    image: openjdk:21-jdk-slim
+    container_name: eureka-server
+    working_dir: /app
+    volumes:
+      - ./discovery-server/target:/app
+    command: [ "java", "-jar", "discovery-server-0.0.1-SNAPSHOT.jar" ]
+    ports:
+      - "8761:8761"
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8761/actuator/health || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  config-server:
+    image: openjdk:21-jdk-slim
+    container_name: config-server
+    working_dir: /app
+    volumes:
+      - ./config-server/target:/app
+    command: [ "java", "-jar", "config-server-0.0.1-SNAPSHOT.jar" ]
+    ports:
+      - "8888:8888"
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8888/actuator/health || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  product-service:
+    image: openjdk:21-jdk-slim
+    container_name: product-service
+    working_dir: /app
+    volumes:
+      - ./product-service/target:/app
+    command: [ "java", "-jar", "product-service-0.0.1-SNAPSHOT.jar" ]
+    ports:
+      - "8082:8082"
+    environment:
+      - SPRING_REDIS_HOST=redis
+      - SPRING_REDIS_PORT=6379
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka
+      - SPRING_CONFIG_IMPORT=optional:configserver:http://config-server:8888
+    restart: unless-stopped
+
+  order-service:
+    image: openjdk:21-jdk-slim
+    container_name: order-service
+    working_dir: /app
+    volumes:
+      - ./order-service/target:/app
+    command: [ "java", "-jar", "order-service-0.0.1-SNAPSHOT.jar" ]
+    ports:
+      - "8083:8083"
+    environment:
+      - SPRING_REDIS_HOST=redis
+      - SPRING_REDIS_PORT=6379
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka
+      - SPRING_CONFIG_IMPORT=optional:configserver:http://config-server:8888
+    restart: unless-stopped
+
+  user-service:
+    image: openjdk:21-jdk-slim
+    container_name: user-service
+    working_dir: /app
+    volumes:
+      - ./user-service/target:/app
+    command: [ "java", "-jar", "user-service-0.0.1-SNAPSHOT.jar" ]
+    ports:
+      - "8085:8085"
+    environment:
+      - SPRING_REDIS_HOST=redis
+      - SPRING_REDIS_PORT=6379
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka
+      - SPRING_CONFIG_IMPORT=optional:configserver:http://config-server:8888
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/userdb
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=root
+    depends_on:
+      - redis
+      - eureka-server
+      - config-server
+      - mysql
+    restart: unless-stopped
+
+  api-gateway:
+    image: openjdk:21-jdk-slim
+    container_name: api-gateway
+    working_dir: /app
+    volumes:
+      - ./api-gateway/target:/app
+    command: [ "java", "-jar", "api-gateway-0.0.1-SNAPSHOT.jar" ]
+    ports:
+      - "8080:8080"
+    environment:
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka
+      - SPRING_CONFIG_IMPORT=optional:configserver:http://config-server:8888
+    restart: unless-stopped
+
+  payment-service:
+    image: openjdk:21-jdk-slim
+    container_name: payment-service
+    working_dir: /app
+    volumes:
+      - ./payment-service/target:/app
+    command: [ "java", "-jar", "payment-service-0.0.1-SNAPSHOT.jar" ]
+    ports:
+      - "8084:8084"
+    environment:
+      - SPRING_REDIS_HOST=redis
+      - SPRING_REDIS_PORT=6379
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka
+      - SPRING_CONFIG_IMPORT=optional:configserver:http://config-server:8888
+    restart: unless-stopped
+
+  mysql:
+    image: mysql:8.1
+    container_name: mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: userdb
+    ports:
+      - "3306:3306"
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
+      interval: 10s
+      retries: 5
